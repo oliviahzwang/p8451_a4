@@ -1,0 +1,66 @@
+---
+title: "P8451 Machine Learning in Public Health - Assignment 1"
+output: github_document
+date: "2023-2-14"
+---
+
+In preparation for the analyses below, we will load the following libraries:
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+
+# Part I: Implementing a Simple Prediction Pipeline
+
+## Question 1: Fitting Prediction Models
+
+### 1.1 Data Import and Cleaning 
+
+We will begin by importing the general health and physical activity data collected by the __New York City Department of Health__ using the `read_csv` function. 
+
+```{r}
+nyc_health_data = read_csv("./class4_p1.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(id = x1, 
+         hypertension = factor(chronic1, labels = c("Yes", "No")),
+         diabetes = factor(chronic3, labels = c("Yes, No")), 
+         asthma = factor(chronic4, labels = c("Yes", "No")), 
+         smoking = factor(tobacco1, labels = c("Most or All Days", 
+                                               "Some Days", 
+                                               "Never")), 
+         alcohol = factor(alcohol1, labels = c("Most or All Days", 
+                                               "Some Days", 
+                                               "Never")), 
+         physical_activity_minutes = gpaq8totmin, 
+         walk_days = gpaq11days, 
+         physical_activity_cat = factor(habits5, labels = c("Very Active", 
+                                                            "Somewhat Active", 
+                                                            "Not Very Active", 
+                                                            "Not Active At All")), 
+         diet_cat = factor(habits7, labels = c("Excellent",
+                                               "Very Good", 
+                                               "Good", 
+                                               "Fair", 
+                                               "Poor")), 
+         age_cat = factor(agegroup, labels = c("18-24 Yrs", 
+                                               "25-44 Yrs", 
+                                               "45-64 Yrs", 
+                                               "65+")), 
+         sex = factor(dem3, labels = c("Male", "Female")), 
+         hispanic = factor(dem4, labels = c("Yes", "No")), 
+         born_in_US = factor(dem8, labels = c("USA", "Outside USA")), 
+         poverty_group = factor(povertygroup, labels = c("<100%", 
+                                                         "100-199%", 
+                                                         "200-399%", 
+                                                         "400-599%", 
+                                                         "600% +", 
+                                                         "Don't Know")), 
+         healthy_days = healthydays) %>% 
+  select(id, hypertension, diabetes, asthma, bmi, smoking, alcohol, 
+         physical_activity_minutes, walk_days, physical_activity_cat, diet_cat, 
+         age_cat, sex, hispanic, born_in_US, poverty_group, healthy_days) %>% 
+  na.omit() %>% 
+  distinct()
+```
+
+### 1.2 Data Import and Cleaning 
