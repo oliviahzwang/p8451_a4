@@ -136,17 +136,18 @@ control.settings =
   trainControl(method = "cv", number = 10)
 ```
 
-These control settings can now be applied within the `train` function, which will be used to implement our algorithms. We also apply a tuning grid for lambda and alpha in order to generate the lambda and alpha values that minimizes the RMSE, and therefore the best model.
+These control settings can now be applied within the `train` function, which will be used to implement our algorithms. We also apply a tuning grid for lambda and alpha in order to generate the lambda and alpha values that minimizes the RMSE, and therefore the best model. The parameters of the grid search (i.e., the values of alpha and lambda) were determined by first running a rough grid search, then narrowing down the range of values to yield more precise values. 
+
 
 ```{r}
 set.seed(123)
 
 alpha = seq(0, 1, length = 20)
 lambda = seq(0, 0.2, length = 20)
-lambda.grid = expand.grid(alpha = alpha, lambda = lambda)
+lambda_grid = expand.grid(alpha = alpha, lambda = lambda)
 
 healthy_days_model_1 = 
-  train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + bmi + hypertension + diabetes + asthma, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda.grid)
+  train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + bmi + hypertension + diabetes + asthma, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda_grid)
 
 healthy_days_model_1$bestTune
 ```
@@ -167,17 +168,17 @@ In the second model, __`healthy_days_model_2`__, we include the same features co
 * `physical_activity_cat`
 * `diet_cat`
 
-Replicating the approach applied to train the first model above, we will apply the same control settings to the `train` function. We also apply a tuning grid again for lambda and alpha in order to generate the lambda and alpha values that minimizes the RMSE, and therefore the best model.
+Replicating the approach applied to train the first model above, we will apply the same control settings to the `train` function. We also apply a tuning grid again for lambda and alpha in order to generate the lambda and alpha values that minimizes the RMSE, and therefore the best model. 
 
 ```{r}
 set.seed(456)
 
 alpha = seq(0.9, 1, length = 20)
-lambda = seq(0, 0.2, length = 20)
-lambda.grid = expand.grid(alpha = alpha, lambda = lambda)
+lambda = seq(0, 0.1, length = 20)
+lambda_grid = expand.grid(alpha = alpha, lambda = lambda)
 
 healthy_days_model_2 = 
-  train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + smoking + alcohol + physical_activity_minutes + walk_days + physical_activity_cat + diet_cat, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda.grid)
+  train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + smoking + alcohol + physical_activity_minutes + walk_days + physical_activity_cat + diet_cat, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda_grid)
 
 healthy_days_model_2$bestTune
 ```
@@ -219,8 +220,7 @@ Since the RMSE is minimized in `healthy_days_model_2`, we can conclude that __`h
 
 ## Question 3: Discussion of Useful Implementation of Final Model 
 
-
-
+The features in `healthy_days_model_2` contain mostly self-reported data, which contrasts the some features included in `healthy_days_model_1`, which contains information on medical history. An application of `healthy_days_model_2` may be useful when access to data is limited to qualitative data collected through population surveys. In instances where individual medical history is not able to be ascertained, self-reported data can still be used to predict the number of days in a month an individual reports having good physical health. 
 
 # Part II: Conducting an Unsupervised Analysis
 
