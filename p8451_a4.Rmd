@@ -9,14 +9,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 In preparation for all the analyses below, we will load the following libraries:
+
 ```{r}
 library(caret)
 library(tidyverse)
 library(dplyr)
-library(devtools)
 library(stats)
 library(factoextra)
 library(cluster)
+library(ggpubr)
 ```
 
 # Part 0: Data Preprocessing
@@ -260,15 +261,16 @@ First, we will obtain and compare the means and standard deviations across all f
 ```{r}
 colMeans(us_arrests, na.rm = TRUE)
 apply(us_arrests, 2, sd, na.rm = TRUE)
+us_arrests
 ```
 
 There are significant differences in the means and standard deviations across the features. It would be most appropriate, therefore, to proceed with centering and scaling these data. To center and scale these data, we will apply the `prcomp` function. 
 
 ```{r}
-us_arrests = 
+us_arrests_pca = 
   prcomp( ~ ., data = us_arrests, center = TRUE, scale = TRUE, na.action = na.omit)
 
-us_arrests$scale
+us_arrests_pca$x
 ```
 
 ### 4.2 Conducting Hierarchical Clustering Analysis
@@ -276,21 +278,24 @@ us_arrests$scale
 Below, we first create a dissimilarity matrix by applying the `dist` function. The data frame is inputted into the function, and the Euclidean distance calculation method is entered, as directed. The complete linkage method is applied as well. After creating the dissimilarity matrix, we will then use the `plot` function to generate the obtained dendrogram.
 
 ```{r}
-dissimilarity_matrix = dist(us_arrests, method = "euclidean")
+dissimilarity_matrix = dist(us_arrests_pca$x, method = "euclidean")
 
 clusters_h <- hclust(dissimilarity_matrix, method = "complete" )
 
 plot(clusters_h, cex = 0.6, hang = -1)
 ```
+
 There is now a decision point regarding where in the height we draw the line to determine the optimal number of clusters. To make this decision, we will apply the gap statistic. 
 
 ```{r}
+us_arrests_pca
+```
+```{r}
 hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "average"), k = k))
 
-gap_stat = clusGap(us_arrests, FUN = hclusCut, K.max = 10, B = 50)
+gap_stat = clusGap(us_arrests_pca$x, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 ```
-
 
 ## Question 5: A Research Application of the Newly Identified Clusters
 

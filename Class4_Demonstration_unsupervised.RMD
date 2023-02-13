@@ -52,7 +52,7 @@ First, we will utilize breast cancer imaging data. In this demonstration, rather
 Remember to replace the file path with the location where the breast cancer data are stored.
 
 ```{r prepdata}
-bc.data<-read.csv("C:/Users/js5406/OneDrive - cumc.columbia.edu/EPIC Course/breast-cancer-wisconsin.data.txt", header=FALSE)
+bc.data<-read.csv("C:/Users/olivi/Desktop/Columbia/Spring 2023/Machine Learning for Epi/Assignments/p8451_a4/p8451_a4/breast-cancer-wisconsin.data.txt", header=FALSE)
 
 var.names<-c("id", "clump_thickness", "uniformity_csize", "uniformity_cshape", "marg_adhesion", "single_ecell_size", "bare_nuclei", "b_chromatin", "normal_nucleoli", "mitoses", "outcome")
 colnames(bc.data)<-var.names
@@ -91,19 +91,12 @@ bc.pca<-prcomp( ~., data=bc.data.features, center=TRUE, scale=TRUE, na.action=na
 #Can compare sds used to scale with the sds above to ensure they are close.
 bc.pca$scale
 
-#Generates scree plot
-fviz_eig(bc.pca)
-
 #view results of pca. Note the first three components are needed to explain at least 75% of the variance
 summary(bc.pca)
 
 #Identify how features loaded on the different components
 bc.pca$rotation
-
-ggbiplot(bc.pca)
-
-ggbiplot(bc.pca, choices=c(2,3))
-
+bc.pca$x
 ```
 
 ***
@@ -119,7 +112,7 @@ For this demonstration, the three variables in our dataset are:
 
 ### Step 1: Load data and prepare for analysis
 ```{r dataprep2}
-copd.data<-read.delim("C:/Users/js5406/OneDrive - cumc.columbia.edu/EPIC Course/Hepta.lrn", header=FALSE)
+copd.data<-read.delim("./Hepta.lrn", header=FALSE)
 
 copd.data<-copd.data[,2:4]
 
@@ -133,7 +126,7 @@ colMeans(copd.data.nomiss, na.rm=TRUE)
 apply(copd.data.nomiss, 2, sd, na.rm=TRUE)
 
 #Is scaling necessary?
-
+copd.data
 ```
 
 
@@ -143,7 +136,6 @@ We can use the kmeans function in order to identify clusters within the data, ba
 set.seed(100)
 clusters<-kmeans(copd.data.nomiss, 5, nstart=25)
 str(clusters)
-fviz_cluster(clusters, data=copd.data.nomiss)
 #Show the mean value of features within each cluster
 clusters$centers
 
@@ -155,12 +147,13 @@ print(gap_stat, method="firstmax")
 clusters.7<-kmeans(copd.data.nomiss, 7, nstart=25)
 
 str(clusters.7)
-
-fviz_cluster(clusters.7, data=copd.data.nomiss)
 ```
 
 ### Step 3: Conduct a hierarchical clustering analysis
 Note there are different methods you can use to create your dissimilarity matrix. We are using complete linkage in this demonstration, which tends to produce more compact clusters. 
+```{r}
+copd.data.nomiss
+```
 ```{r}
 # Create Dissimilarity matrix
 diss.matrix <- dist(copd.data.nomiss, method = "euclidean")
@@ -172,10 +165,16 @@ clusters.h<- hclust(diss.matrix, method = "complete" )
 plot(clusters.h, cex = 0.6, hang = -1)
 
 #create function to use within clusGap
+```
+```{r}
+copd.data.nomiss
+```
+```{r}
 hclusCut <- function(x, k) list(cluster = cutree(hclust(dist(x, method="euclidian"), method="average"), k=k))
 
 gap_stat <- clusGap(copd.data.nomiss, FUN = hclusCut, K.max = 10, B = 50)
-fviz_gap_stat(gap_stat)
+gap_stat
+```
 
 
 #Use number of clusters from gap statistic to obtain cluster assignment for each observation
