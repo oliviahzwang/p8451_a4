@@ -1,5 +1,5 @@
 ---
-title: "P8451 Machine Learning in Public Health - Assignment 1"
+title: "P8451 Machine Learning in Public Health - Assignment 4"
 output: github_document
 date: "2023-2-14"
 ---
@@ -8,11 +8,15 @@ date: "2023-2-14"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-In preparation for the analyses below, we will load the following libraries:
+In preparation for all the analyses below, we will load the following libraries:
 ```{r}
 library(caret)
 library(tidyverse)
 library(dplyr)
+library(devtools)
+library(stats)
+library(factoextra)
+library(cluster)
 ```
 
 # Part 0: Data Preprocessing
@@ -98,6 +102,15 @@ high_correlations = findCorrelation(correlations, cutoff = 0.4)
 
 Since there are no values in the `high_correlations` object, we can conclude that there are no highly correlated variables in these data. 
 
+## Centering and Scaling
+
+Below, we center and scale these data. In general, it is always good practice to do so! 
+
+```{r}
+preprocess_setup <- preProcess(nyc_health_numeric, method = c("center", "scale"))
+transformed.vals = predict(preprocess_setup, nyc_health_numeric)
+```
+
 ## Partitioning Data
 
 For the purposes of this analysis, we will partition the data into training and testing using a 70/30 split. This process involves applying the `createDataPartition` function to generate a set of training and testing data with equal proportion of individual with the outcome of interest, i.e., `healthy_days`. The new object `train_index` contains all the indexes of the rows in the original data set contained in the 70% split. The rows indexed to be in the 70% is assigned to a new training data set, and the remaining 30% is assigned to a new testing data set. 
@@ -115,7 +128,7 @@ nyc_health_test <- nyc_health[-train_index,]
 
 Below, we will fit two prediction models with linear regression to preidct the number of days in a month an individual reported having good physical health (i.e., variable `healthy_days`).
 
-### Prediction Model 1: Demographics + Medical Conditions 
+### 1.1 Model 1: Demographics + Medical Conditions 
 
 In the first model, __`healthy_days_model_1`__, we include features containing basic demographic information, as well as those containing medical information. The features included in this model are as follows: 
 
@@ -140,19 +153,18 @@ These control settings can now be applied within the `train` function, which wil
 
 
 ```{r}
-set.seed(123)
-
 alpha = seq(0, 1, length = 20)
 lambda = seq(0, 0.2, length = 20)
 lambda_grid = expand.grid(alpha = alpha, lambda = lambda)
 
+set.seed(123)
 healthy_days_model_1 = 
   train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + bmi + hypertension + diabetes + asthma, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda_grid)
 
 healthy_days_model_1$bestTune
 ```
 
-### Prediction Model 2: Demographics + Self-Reported Data
+### 1.2 Model 2: Demographics + Self-Reported Data
 
 In the second model, __`healthy_days_model_2`__, we include the same features containing basic demographic information, as well as self-reported data regarding smoking and alcohol consumption, levels of physical activity, and diet. The features included in this model are as follows: 
 
@@ -171,12 +183,11 @@ In the second model, __`healthy_days_model_2`__, we include the same features co
 Replicating the approach applied to train the first model above, we will apply the same control settings to the `train` function. We also apply a tuning grid again for lambda and alpha in order to generate the lambda and alpha values that minimizes the RMSE, and therefore the best model. 
 
 ```{r}
-set.seed(456)
-
 alpha = seq(0.9, 1, length = 20)
 lambda = seq(0, 0.1, length = 20)
 lambda_grid = expand.grid(alpha = alpha, lambda = lambda)
 
+set.seed(123)
 healthy_days_model_2 = 
   train(healthy_days ~ sex + age_cat + hispanic + born_in_US + poverty_group + smoking + alcohol + physical_activity_minutes + walk_days + physical_activity_cat + diet_cat, data = nyc_health_train, method = "glmnet", preProc = c("center", "scale"), trControl = control.settings, tuneGrid = lambda_grid)
 
@@ -187,7 +198,7 @@ healthy_days_model_2$bestTune
 
 After producing the two trained models above, we can proceed with model evaluation by first applying the prediction models within test data using the `predict` function. We then generate a function that calculates the RMSE, with the model testing outcomes set as the actual/observed values, and the original testing data as the expected values. 
 
-#### Prediction Model 1 Evaluation
+### 2.1 Prediction Model 1 Evaluation
 
 Below we apply the aforementioned steps to evaluate `healthy_days_model_1`. 
 
@@ -202,7 +213,7 @@ rmse = function(actual, expected) {
 rmse(test_outcome_model_1, nyc_health_test$healthy_days)
 ```
 
-#### Prediction Model 2 Evaluation
+### 2.2 Prediction Model 2 Evaluation
 
 Below we apply the above mentioned steps to evaluate `healthy_days_model_2`. 
 
@@ -224,5 +235,65 @@ The features in `healthy_days_model_2` contain mostly self-reported data, which 
 
 # Part II: Conducting an Unsupervised Analysis
 
- 
+For the purposes of this analysis, we will be using the built-in R data set __USArrests__, which includes the crime statistics for each of the 50 U.S. states in 1973. We can apply the `skim` function to generate general descriptive statistics for the data set. 
+
+```{r}
+us_arrests = USArrests
+skimr::skim(us_arrests)
+```
+
+The `us_arrests` data set contains __`r nrow(us_arrests)` rows__ and __`r ncol(us_arrests)` columns__. Each row corresponds to a U.S. state, and each column contains the following state-specific data:
+
+* Murder arrests per 100,000 population
+* Assault arrests per 100,000 population
+* Percent urban population
+* Rape arrests per 100,000 population 
+
+There are __`r sum(is.na(us_arrests))` missing values__ in these data.
+
+## Question 4: Hierarchical Cluster Analysis 
+
+### 4.1 Assessing Need for Scaling
+
+First, we will obtain and compare the means and standard deviations across all features by applying the `colMeans` function. 
+
+```{r}
+colMeans(us_arrests, na.rm = TRUE)
+apply(us_arrests, 2, sd, na.rm = TRUE)
+```
+
+There are significant differences in the means and standard deviations across the features. It would be most appropriate, therefore, to proceed with centering and scaling these data. To center and scale these data, we will apply the `prcomp` function. 
+
+```{r}
+us_arrests = 
+  prcomp( ~ ., data = us_arrests, center = TRUE, scale = TRUE, na.action = na.omit)
+
+us_arrests$scale
+```
+
+### 4.2 Conducting Hierarchical Clustering Analysis
+
+Below, we first create a dissimilarity matrix by applying the `dist` function. The data frame is inputted into the function, and the Euclidean distance calculation method is entered, as directed. The complete linkage method is applied as well. After creating the dissimilarity matrix, we will then use the `plot` function to generate the obtained dendrogram.
+
+```{r}
+dissimilarity_matrix = dist(us_arrests, method = "euclidean")
+
+clusters_h <- hclust(dissimilarity_matrix, method = "complete" )
+
+plot(clusters_h, cex = 0.6, hang = -1)
+```
+There is now a decision point regarding where in the height we draw the line to determine the optimal number of clusters. To make this decision, we will apply the gap statistic. 
+
+```{r}
+hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "average"), k = k))
+
+gap_stat = clusGap(us_arrests, FUN = hclusCut, K.max = 10, B = 50)
+fviz_gap_stat(gap_stat)
+```
+
+
+## Question 5: A Research Application of the Newly Identified Clusters
+
+
+
 
