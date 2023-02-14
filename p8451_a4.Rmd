@@ -259,46 +259,89 @@ There are __`r sum(is.na(us_arrests))` missing values__ in these data.
 First, we will obtain and compare the means and standard deviations across all features by applying the `colMeans` function. 
 
 ```{r}
-colMeans(us_arrests, na.rm = TRUE)
-apply(us_arrests, 2, sd, na.rm = TRUE)
-us_arrests
+us_arrests_features = us_arrests %>% 
+  select(Murder, Assault, UrbanPop, Rape)
+  
+colMeans(us_arrests_features, na.rm = TRUE)
+apply(us_arrests_features, 2, sd, na.rm = TRUE)
 ```
-
 There are significant differences in the means and standard deviations across the features. It would be most appropriate, therefore, to proceed with centering and scaling these data. To center and scale these data, we will apply the `prcomp` function. 
 
 ```{r}
-us_arrests_pca = 
-  prcomp( ~ ., data = us_arrests, center = TRUE, scale = TRUE, na.action = na.omit)
-
-us_arrests_pca$x
+us_arrests_features_scaled = 
+  prcomp( ~ ., data = us_arrests_features, center = TRUE, scale = TRUE, na.action = na.omit)
 ```
 
 ### 4.2 Conducting Hierarchical Clustering Analysis
 
-Below, we first create a dissimilarity matrix by applying the `dist` function. The data frame is inputted into the function, and the Euclidean distance calculation method is entered, as directed. The complete linkage method is applied as well. After creating the dissimilarity matrix, we will then use the `plot` function to generate the obtained dendrogram.
+Below, we first create a dissimilarity matrix by applying the `dist` function. The `us_arrests_scaled` data frame is inputted into the function, and the Euclidean distance calculation method is entered as directed. The complete linkage method is applied as well. After creating the dissimilarity matrix, we will then use the `plot` function to generate the obtained dendrogram. 
 
 ```{r}
-dissimilarity_matrix = dist(us_arrests_pca$x, method = "euclidean")
+dissimilarity_matrix = dist(us_arrests_features_scaled$x, method = "euclidean")
 
-clusters_h <- hclust(dissimilarity_matrix, method = "complete" )
+clusters_h = hclust(dissimilarity_matrix, method = "complete" )
 
 plot(clusters_h, cex = 0.6, hang = -1)
 ```
 
-There is now a decision point regarding where in the height we draw the line to determine the optimal number of clusters. To make this decision, we will apply the gap statistic. 
+There is now a decision point regarding where in the height we draw the line to determine the optimal number of clusters. To make this decision, we will use the gap statistic. 
 
-```{r}
-us_arrests_pca
-```
 ```{r}
 hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "average"), k = k))
 
-gap_stat = clusGap(us_arrests_pca$x, FUN = hclusCut, K.max = 10, B = 50)
+gap_stat = clusGap(us_arrests_features_scaled$x, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 ```
 
+Based on the output above, we can conclude that the __optimal number of clusters is 5__, since the gap statistic is maximized at k = 5. Using this information, we can obtain the cluster assignment for each of the 50 states. Finally, we can generate summary-level data to describe the composition of each cluster in terms of the original input features. 
+
+```{r}
+clusters_h_5 = cutree(clusters_h, k = 5)
+
+table(clusters_h_5)
+
+aggregate(us_arrests_features, by = list(cluster = clusters_h_5), mean)
+```
+
+Descriptions of the compositions of each cluster in terms of the original input features, and how each cluster compares to the other clusters in terms of the original input features are as follows: 
+
+__Cluster 1__
+
+* Mean number of murder arrests per 100,000 population = 14.67 (Highest)
+* Mean number of assault arrests per 100,000 population = 251.29 (3rd Highest)
+* Percent urban population = 54.29% (3rd Highest)
+* Mean number of rape arrests per 100,000 population = 21.69 (3rd Highest)
+
+__Cluster 2__
+
+* Mean number of murder arrests per 100,000 population = 10.00 (3rd Highest)
+* Mean number of assault arrests per 100,000 population = 263.00 (2nd Highest)
+* Percent urban population = 48.00% (Lowest)
+* Mean number of rape arrests per 100,000 population = 44.50 (Highest)
+
+__Cluster 3__
+
+* Mean number of murder arrests per 100,000 population = 11.05 (2nd Highest)
+* Mean number of assault arrests per 100,000 population = 264.09 (Highest)
+* Percent urban population = 79.09% (Highest)
+* Mean number of rape arrests per 100,000 population = 32.62 (2nd Highest)
+
+__Cluster 4__
+
+* Mean number of murder arrests per 100,000 population = 5.87 (2nd Lowest)
+* Mean number of assault arrests per 100,000 population = 134.48 (2nd Lowest)
+* Percent urban population = 70.76% (2nd Highest)
+* Mean number of rape arrests per 100,000 population = 18.58 (2nd Lowest)
+
+__Cluster 5__
+
+* Mean number of murder arrests per 100,000 population = 3.18 (Lowest)
+* Mean number of assault arrests per 100,000 population = 78.70 (Lowest)
+* Percent urban population = 49.30% (2nd Lowest)
+* Mean number of rape arrests per 100,000 population = 11.63 (Lowest)
+
 ## Question 5: A Research Application of the Newly Identified Clusters
 
-
+One research question that can be 
 
 
